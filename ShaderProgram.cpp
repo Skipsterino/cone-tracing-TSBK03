@@ -218,6 +218,8 @@ void ShaderProgram::uploadUniform(const std::string& name, const Material& mater
 	uploadUniform(name + ".specular", material.getSpecular());
 	uploadUniform(name + ".shininess", material.getShininess());
 	uploadUniform(name + ".emissivity", material.getEmissivity());
+	uploadUniform(name + ".diffuseReflectivity", material.getDiffuseReflectivity());
+	uploadUniform(name + ".specularReflectivity", material.getSpecularReflectivity());
 }
 
 void swap(ShaderProgram& lhs, ShaderProgram& rhs) noexcept

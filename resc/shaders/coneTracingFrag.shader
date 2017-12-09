@@ -6,6 +6,9 @@ struct Material
 	vec3 diffuse;
 	vec3 specular;
 	float shininess;
+	float emissivity;
+	float diffuseReflectivity;
+	float specularReflectivity;
 };
 
 struct Light
@@ -54,7 +57,6 @@ vec3 findOrthVec(vec3 u) {
 	vec3 v = vec3(0.1690, 0.8451, 0.5070); // Random normalized vector
 	return abs(dot(u, v)) > 0.99999f ? cross(u, vec3(0, 1, 0)) : cross(u, v);
 }
-
 bool isInsideCube(const vec3 p) { return abs(p.x) < 1 && abs(p.y) < 1 && abs(p.z) < 1; }
 
 // Traces a specular voxel cone.
@@ -75,8 +77,6 @@ vec3 traceSpecularVoxelCone(vec3 from, vec3 dir) {
 		float MMlevel = 0.1 * log2(1 + dist / VOXEL_SIZE);
 		vec4 voxel = textureLod(voxGrid, 0.5f * curGridPos + vec3(0.5f), min(MMlevel, 6.f));
 		float f = 1 - acc.a;
-		//acc.rgb += 0.9 * voxel.rgb * voxel.a * f;
-		//acc.a += 0.9 * voxel.a * f;
 		acc.rgb += 0.6 * voxel.rgb * f;
 		acc.a += 0.6 * voxel.a;
 		dist += STEP * (1.0f + 0.125f * MMlevel);
@@ -88,13 +88,13 @@ vec3 indirectSpecularLight()
 {
 	const vec3 viewDir = normalize(fragPos - view_pos);
 	const vec3 reflection = normalize(reflect(viewDir, fragNormNorm));
-	return 0.5f * material.specular * traceSpecularVoxelCone(fragPos, reflection);
+	return 0.8f * material.specular * material.specularReflectivity * traceSpecularVoxelCone(fragPos, reflection);
 }
 
 vec3 traceDiffuseVoxelCone(const vec3 from, vec3 dir) {
 	dir = normalize(dir);
 
-	const float CONE_SPREAD = 0.325;
+	const float CONE_SPREAD = 0.25;
 
 	vec4 acc = vec4(0.0f);
 
@@ -119,7 +119,7 @@ vec3 traceDiffuseVoxelCone(const vec3 from, vec3 dir) {
 }
 
 vec3 indirectDiffuseLight() {
-	const float ANGLE_MIX = 0.7f; // Angle mix (1.0f => orthogonal direction, 0.0f => direction of normal).
+	const float ANGLE_MIX = 1.0f; // Angle mix (1.0f => orthogonal direction, 0.0f => direction of normal).
 
 	const float w[3] = { 1.0, 1.0, 1.0 }; // Cone weights.
 
@@ -157,19 +157,8 @@ vec3 indirectDiffuseLight() {
 	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * ortho2, s3);
 	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN - CONE_OFFSET * ortho2, s4);
 
-	// Trace 4 corner cones.
-	const vec3 c1 = mix(fragNormNorm, corner, ANGLE_MIX);
-	const vec3 c2 = mix(fragNormNorm, -corner, ANGLE_MIX);
-	const vec3 c3 = mix(fragNormNorm, corner2, ANGLE_MIX);
-	const vec3 c4 = mix(fragNormNorm, -corner2, ANGLE_MIX);
-
-	//acc += w[2] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * corner, c1);
-	//acc += w[2] * traceDiffuseVoxelCone(C_ORIGIN - CONE_OFFSET * corner, c2);
-	//acc += w[2] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * corner2, c3);
-	//acc += w[2] * traceDiffuseVoxelCone(C_ORIGIN - CONE_OFFSET * corner2, c4);
-
 	// Return result.
-	return 0.5f * acc * (material.diffuse + vec3(0.001f));
+	return 0.7f * acc * material.diffuse * material.diffuseReflectivity;
 }
 
 vec3 directLight()
@@ -192,7 +181,7 @@ vec3 directLight()
 	float attenuation = calculateAttenuation(length(light.position - fragPos));
 	
 	// Add and return them
-	return 0.9f * attenuation * (ambient + diffuse + specular);
+	return 1.1f * (attenuation * (ambient + diffuse + specular));
 }
 
 float castShadowCone() 
@@ -222,7 +211,7 @@ float castShadowCone()
 		dist += STEP * (1.0f + 0.125f * MMlevel) / 2;
 	}
 
-	return max(1.f - shadowAcc + 0.2f * noise1(fragPos.x), 0.f);
+	return 0.7f * max(1.f - shadowAcc + 0.2f * noise1(fragPos.x), 0.f);
 }
 
 void main()
@@ -236,10 +225,10 @@ void main()
 	else if (Mode == 2)
 		fragColor.brga = vec4(vec3(1.f) * castShadowCone(), 1.f);
 	else if (Mode == 3)
-		fragColor.bgra = objColor * vec4(indirectDiffuseLight(), 1.f);
+		fragColor.bgra = objColor * 1.5f * vec4(indirectDiffuseLight(), 1.f);
 	else if (Mode == 4)
 		fragColor.bgra = objColor * vec4(indirectSpecularLight(), 1.f) * 3.f;
 	else if (Mode == 5)
-		fragColor.bgra = objColor * vec4(0.9f * ( indirectDiffuseLight() + directLight()*castShadowCone()), 1.f);
+		fragColor.bgra = objColor * vec4(0.7f * (indirectSpecularLight() + indirectDiffuseLight() + directLight()*castShadowCone()) + material.emissivity * material.diffuse, 1.f);
 		
 }

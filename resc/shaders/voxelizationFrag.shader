@@ -7,6 +7,8 @@ struct Material
 	vec3 specular;
 	float shininess;
 	float emissivity;
+	float diffuseReflectivity;
+	float specularReflectivity;
 };
 
 struct Light
@@ -60,6 +62,10 @@ void main()
 
 	// Add them
 	vec4 result = objColor * vec4( attenuation * ( ambient + diffuse + specular ) + material.emissivity * material.diffuse, 1.f);
+
+	result.r = min(result.r, 1.0f);
+	result.g = min(result.g, 1.0f);
+	result.b = min(result.b, 1.0f);
 
 	// Upload result to (correct) voxel in voxel grid
 	ivec3 dim = imageSize(voxGrid);

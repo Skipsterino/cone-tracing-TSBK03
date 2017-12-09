@@ -32,7 +32,7 @@ protected:
 	TextureMap textures{};
 	Texture3D* voxelization{};
 	Camera cam{};
-	Material mat{ glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(0,0,0), 0, 0};
+	Material mat{ glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(0,0,0), 0};
 	PointLight light{ glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(0,0,0) };
 	bool forwardKeyPressed{ false };
 	bool backwardKeyPressed{ false };

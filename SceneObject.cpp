@@ -7,7 +7,11 @@
 
 #include "SceneObject.h"
 
-SceneObject::SceneObject(const char* path) : tr{}, mo{path}
+SceneObject::SceneObject(const char* path) : 
+	tr{},
+	mo{path},
+	mat{ glm::vec3(0,0,0), glm::vec3(0,0,0), glm::vec3(0,0,0), 0 },
+	tex{}
 {
 }
 
@@ -55,6 +59,17 @@ void SceneObject::setParentTransform(TransformPipeline3D* parent)
 {
 	tr.setParentTransform(parent);
 }
+
+void SceneObject::setTexture(std::string str)
+{
+	tex = str;
+}
+
+std::string SceneObject::getTexture() const
+{
+	return tex;
+}
+
 glm::mat4 SceneObject::getModelTransform() const
 {
 	return tr.getModelTransform();

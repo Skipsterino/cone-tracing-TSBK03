@@ -20,13 +20,17 @@ public:
 	void setView(glm::mat4 view);
 	void setProj(glm::mat4 proj);
 	void setParentTransform(TransformPipeline3D* parent);
+	void setTexture(std::string str);
+	std::string getTexture() const;
 	glm::mat4 getModelTransform() const;
 	glm::mat4 getLocalModelTransform() const;
 	glm::mat4 getMVP() const;
 
+	Material mat;
 private:
 	TransformPipeline3D tr;
 	RawModel mo;
+	std::string tex;
 
 };
 

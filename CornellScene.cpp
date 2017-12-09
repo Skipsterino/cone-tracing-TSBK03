@@ -30,6 +30,7 @@ CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, 
 
 	// Light and material setup
 	{
+		// TODO: REMOVE GLOBAL MATERIAL
 		mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
 		mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
 		mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
@@ -50,14 +51,50 @@ CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, 
 		SceneObject* box = new SceneObject{ "resc/cornellTextCoords.obj" };
 		box->rotate(glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
 		box->scale(glm::vec3(0.999f, 0.999f, 0.999f));
+		box->mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
+		box->mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
+		box->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
+		box->mat.setShininess(0.6f*128.f);
+		box->mat.setEmissivity(0.0f);
+		box->mat.setDiffuseReflectivity(1.f);
+		box->mat.setSpecularReflectivity(0.1f);
+		box->setTexture("Cornell");
 		sceneObjs.emplace("Box", box);
 
 		SceneObject* bunny = new SceneObject{ "resc/bunnyHD.obj" };
 		bunny->translate(glm::vec3(0.36f, 0.0f, -0.38f));
 		bunny->scale(glm::vec3(0.3f, 0.3f, 0.3f));
+		bunny->mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
+		bunny->mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
+		bunny->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
+		bunny->mat.setShininess(0.6f*128.f);
+		bunny->mat.setEmissivity(0.7f);
+		bunny->mat.setDiffuseReflectivity(1.f);
+		bunny->mat.setSpecularReflectivity(0.1f);
+		bunny->setTexture("Cornell");
 		sceneObjs.emplace("Bunny", bunny);
 
+		SceneObject* teapot = new SceneObject{ "resc/teapot.obj" };
+		teapot->rotate(glm::radians(90.f), glm::vec3(-1, 0, 0));
+		teapot->translate(glm::vec3(-0.23f, -0.51f, -0.56f));
+		teapot->scale(glm::vec3(0.1f, 0.1f, 0.1f));
+		teapot->mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
+		teapot->mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
+		teapot->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
+		teapot->mat.setShininess(0.6f*128.f);
+		teapot->mat.setEmissivity(0.0f);
+		teapot->mat.setDiffuseReflectivity(1.f);
+		teapot->mat.setSpecularReflectivity(1.f);
+		teapot->setTexture("Concrete");
+		sceneObjs.emplace("Teapot", teapot);
+
 		SceneObject* ball = new SceneObject{ "resc/ball.obj" };
+		ball->mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
+		ball->mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
+		ball->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
+		ball->mat.setShininess(0.6f*128.f);
+		ball->mat.setEmissivity(1.f);
+		ball->setTexture("Cornell");
 		sceneObjs.emplace("Ball", ball);
 
 	}
@@ -161,10 +198,10 @@ void CornellScene::drawScene()
 		shader->uploadUniform("view_pos", cam.getPosition());
 
 		shader->uploadUniform("light", light);
-		shader->uploadUniform("material", mat);
+		shader->uploadUniform("material", i.second->mat);
 
 		shader->uploadUniform("texUnit", 1);
-		textures.at("Cornell")->bind(1);
+		textures.at(i.second->getTexture())->bind(1);
 
 		i.second->draw();
 	}
@@ -196,13 +233,13 @@ void CornellScene::drawScene()
 		shader->uploadUniform("view_pos", cam.getPosition());
 
 		shader->uploadUniform("light", light);
-		shader->uploadUniform("material", mat);
+		shader->uploadUniform("material", i.second->mat);
 
 		shader->uploadUniform("gridSize", voxelGridSize);
 		shader->uploadUniform("Mode", cycleMode);
 
 		shader->uploadUniform("texUnit", 1);
-		textures.at("Cornell")->bind(1);
+		textures.at(i.second->getTexture())->bind(1);
 
 		voxelGrid->bind(0);
 		shader->uploadUniform("voxGrid", 0);
