@@ -54,13 +54,18 @@ float calculateAttenuation(float dist)
 
 vec3 findOrthVec(vec3 u) {
 	u = normalize(u);
-	vec3 v = vec3(0.1690, 0.8451, 0.5070); // Random normalized vector
+	//vec3 v = vec3(0.1690, 0.8451, 0.5070); // Random normalized vector
+	vec3 v = normalize(noise3(length(fragPos)));
 	return abs(dot(u, v)) > 0.99999f ? cross(u, vec3(0, 1, 0)) : cross(u, v);
 }
-bool isInsideCube(const vec3 p) { return abs(p.x) < 1 && abs(p.y) < 1 && abs(p.z) < 1; }
+
+bool outOfBounds(const vec3 pos)
+{ 
+	return abs(pos.x) > 1 || abs(pos.y) > 1 || abs(pos.z) > 1;
+}
 
 // Traces a specular voxel cone.
-vec3 traceSpecularVoxelCone(vec3 from, vec3 dir) {
+vec3 castSpecularCone(vec3 from, vec3 dir) {
 	dir = normalize(dir);
 
 	const float OFFSET = 2 * VOXEL_SIZE;
@@ -72,7 +77,7 @@ vec3 traceSpecularVoxelCone(vec3 from, vec3 dir) {
 	vec4 acc = vec4(0.0f);
 	while (dist < MAX_DISTANCE && acc.a < 1.f) {
 		vec3 curGridPos = from + dist * dir;
-		if (!isInsideCube(curGridPos)) break;
+		if (outOfBounds(curGridPos)) break;
 
 		float MMlevel = 0.1 * log2(1 + dist / VOXEL_SIZE);
 		vec4 voxel = textureLod(voxGrid, 0.5f * curGridPos + vec3(0.5f), min(MMlevel, 6.f));
@@ -88,30 +93,30 @@ vec3 indirectSpecularLight()
 {
 	const vec3 viewDir = normalize(fragPos - view_pos);
 	const vec3 reflection = normalize(reflect(viewDir, fragNormNorm));
-	return 0.8f * material.specular * material.specularReflectivity * traceSpecularVoxelCone(fragPos, reflection);
+
+	if (Mode == 4)
+		return 0.8f * material.specular * castSpecularCone(fragPos, reflection);
+	else 
+		return 0.8f * material.specular * material.specularReflectivity * castSpecularCone(fragPos, reflection);
 }
 
-vec3 traceDiffuseVoxelCone(const vec3 from, vec3 dir) {
+vec3 castDiffuseCone(const vec3 from, vec3 dir) {
 	dir = normalize(dir);
 
-	const float CONE_SPREAD = 0.25;
+	const float CONE_SPREAD = 0.35;
 
 	vec4 acc = vec4(0.0f);
 
-	// Controls bleeding from close surfaces.
-	// Low values look rather bad if using shadow cone tracing.
-	// Might be a better choice to use shadow maps and lower this value.
-	//float dist = 0.01953125;
 	float dist = 0.05;
 	// Trace.
+	vec3 curGridPos = from;
 	while (dist < MAX_DISTANCE && acc.a < 1) {
-		vec3 curGridPos = from + dist * dir;
-		curGridPos = 0.5f * (from + dist * dir) + vec3(0.5f);
+		curGridPos = from + dist * dir;
 
 		float l = (1 + CONE_SPREAD * dist / VOXEL_SIZE);
 		float MMlevel = log2(l);
 		float ll = (MMlevel + 1) * (MMlevel + 1);
-		vec4 voxel = textureLod(voxGrid, curGridPos, min(5, MMlevel));
+		vec4 voxel = textureLod(voxGrid, vec3(0.5f) + 0.5f * curGridPos, min(5, MMlevel));
 		acc += 0.075 * ll * voxel * pow(1 - voxel.a, 2);
 		dist += ll * VOXEL_SIZE * 2;
 	}
@@ -119,43 +124,33 @@ vec3 traceDiffuseVoxelCone(const vec3 from, vec3 dir) {
 }
 
 vec3 indirectDiffuseLight() {
-	const float ANGLE_MIX = 1.0f; // Angle mix (1.0f => orthogonal direction, 0.0f => direction of normal).
+	const float ANGLE_MIX = 0.9f; // Angle mix (1.0f => orthogonal direction, 0.0f => direction of normal).
 
-	const float w[3] = { 1.0, 1.0, 1.0 }; // Cone weights.
-
-	// Find a base for the side cones with the normal as one of its base vectors.
+	// Find a orthonormal base from frag normal 
 	const vec3 ortho = normalize(findOrthVec(fragNormNorm));
 	const vec3 ortho2 = normalize(cross(ortho, fragNormNorm));
 
-	// Find base vectors for the corner cones too.
-	const vec3 corner = 0.5f * (ortho + ortho2);
-	const vec3 corner2 = 0.5f * (ortho - ortho2);
+	// Find start position of trace.
+	const vec3 OFFSET = fragNormNorm * 4.f * VOXEL_SIZE;
+	const vec3 ORIGIN = fragPos + OFFSET;
 
-	// Find start position of trace (start with a bit of offset).
-	const vec3 N_OFFSET = fragNormNorm * (1 + 4 * ISQRT2) * VOXEL_SIZE;
-	const vec3 C_ORIGIN = fragPos + N_OFFSET;
-
-	// Accumulate indirect diffuse light.
 	vec3 acc = vec3(0);
 
-	// We offset forward in normal direction, and backward in cone direction.
-	// Backward in cone direction improves GI, and forward direction removes
-	// artifacts.
-	const float CONE_OFFSET = -0.01;
+	float CONE_OFFSET = -0.01f;
 
-	// Trace front cone
-	acc += w[0] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * fragNormNorm, fragNormNorm);
+	// front cone
+	acc += castDiffuseCone(ORIGIN + CONE_OFFSET * fragNormNorm, fragNormNorm);
 
-	// Trace 4 side cones.
+	// 4 side cones
 	const vec3 s1 = mix(fragNormNorm, ortho, ANGLE_MIX);
 	const vec3 s2 = mix(fragNormNorm, -ortho, ANGLE_MIX);
 	const vec3 s3 = mix(fragNormNorm, ortho2, ANGLE_MIX);
 	const vec3 s4 = mix(fragNormNorm, -ortho2, ANGLE_MIX);
 
-	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * ortho, s1);
-	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN - CONE_OFFSET * ortho, s2);
-	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN + CONE_OFFSET * ortho2, s3);
-	acc += w[1] * traceDiffuseVoxelCone(C_ORIGIN - CONE_OFFSET * ortho2, s4);
+	acc += castDiffuseCone(ORIGIN + CONE_OFFSET * ortho, s1);
+	acc += castDiffuseCone(ORIGIN - CONE_OFFSET * ortho, s2);
+	acc += castDiffuseCone(ORIGIN + CONE_OFFSET * ortho2, s3);
+	acc += castDiffuseCone(ORIGIN - CONE_OFFSET * ortho2, s4);
 
 	// Return result.
 	return 0.7f * acc * material.diffuse * material.diffuseReflectivity;
@@ -188,7 +183,7 @@ float castShadowCone()
 {
 
 	vec3 dir = light.position - fragPos; // direction from fragment to light position
-	const float travelDist = length(dir) - 5.f * VOXEL_SIZE;
+	const float travelDist = length(dir) - 7.f * VOXEL_SIZE;
 	dir = normalize(dir);
 
 	const float OFFSET = 2 * VOXEL_SIZE;
@@ -201,17 +196,18 @@ float castShadowCone()
 	vec3 curGridPos = from + dist * dir;
 	while (dist < travelDist && shadowAcc < 1.f) {
 		curGridPos = from + dist * dir;
-		if (!isInsideCube(curGridPos)) break;
-		float MMlevel = 0.3 * log2(1 + dist / VOXEL_SIZE);
-		vec4 voxel = textureLod(voxGrid, 0.5f * curGridPos + vec3(0.5f), min(1.f + MMlevel, 6.f));
-		
+		if (outOfBounds(curGridPos)) break;
+		float MMlevel = 0.6 * log2(1 + dist / VOXEL_SIZE);
 
-		shadowAcc += 0.1f * voxel.a;
+		vec4 voxel1 = textureLod(voxGrid, 0.5f * curGridPos + vec3(0.5f), min(1.f + MMlevel, 6.f));
+		vec4 voxel2 = textureLod(voxGrid, 0.5f * curGridPos + vec3(0.5f), 0.3f * min(1.f + MMlevel, 2.f));
+		
+		shadowAcc += 0.034f * voxel1.a + 0.09f * voxel2.a;
 
 		dist += STEP * (1.0f + 0.125f * MMlevel) / 2;
 	}
 
-	return 0.7f * max(1.f - shadowAcc + 0.2f * noise1(fragPos.x), 0.f);
+	return pow(0.7f * max(1.f - shadowAcc + 0.2f * noise1(fragPos.x), 0.f), 0.8);
 }
 
 void main()

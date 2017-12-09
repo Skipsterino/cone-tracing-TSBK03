@@ -83,7 +83,7 @@ CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, 
 		teapot->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
 		teapot->mat.setShininess(0.6f*128.f);
 		teapot->mat.setEmissivity(0.0f);
-		teapot->mat.setDiffuseReflectivity(1.f);
+		teapot->mat.setDiffuseReflectivity(0.f);
 		teapot->mat.setSpecularReflectivity(1.f);
 		teapot->setTexture("Concrete");
 		sceneObjs.emplace("Teapot", teapot);
@@ -209,7 +209,7 @@ void CornellScene::drawScene()
 	glGenerateMipmap(GL_TEXTURE_3D);
 	GLenum err;
 	while ((err = glGetError()) != GL_NO_ERROR) {
-		std::cerr << "OpenGL error: " << err << std::endl;
+		//std::cerr << "OpenGL error: " << err << std::endl;
 	}
 	
 	// Cone tracing
