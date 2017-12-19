@@ -9,7 +9,7 @@
 #include <iostream>
 
 
-CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, voxelGrid{nullptr}, cycleMode{0}
+CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{128}, voxelGrid{nullptr}, cycleMode{0}
 {
 	windowPtr = window;
 	windowPtr->setCursorMode(CursorMode::DISABLED);
@@ -50,7 +50,7 @@ CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, 
 	{
 		SceneObject* box = new SceneObject{ "resc/cornellTextCoords.obj" };
 		box->rotate(glm::radians(-90.f), glm::vec3(0.f, 1.f, 0.f));
-		box->scale(glm::vec3(0.999f, 0.999f, 0.999f));
+		box->scale(glm::vec3(0.9999f, 0.9999f, 0.9999f));
 		box->mat.setAmbient(glm::vec3(1.f, 1.f, 1.f));
 		box->mat.setDiffuse(glm::vec3(1.f, 1.f, 1.f));
 		box->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
@@ -83,7 +83,7 @@ CornellScene::CornellScene(Window* window) : GenericScene(), voxelGridSize{64}, 
 		teapot->mat.setSpecular(glm::vec3(0.5f, 0.5f, 0.5f));
 		teapot->mat.setShininess(0.6f*128.f);
 		teapot->mat.setEmissivity(0.0f);
-		teapot->mat.setDiffuseReflectivity(0.f);
+		teapot->mat.setDiffuseReflectivity(0.6f);
 		teapot->mat.setSpecularReflectivity(1.f);
 		teapot->setTexture("Concrete");
 		sceneObjs.emplace("Teapot", teapot);
@@ -172,7 +172,6 @@ void CornellScene::update(GLfloat timeDelta, GLfloat timeElapsed)
 
 void CornellScene::drawScene()
 {
-	// Clear screen and depth buffer
 	GLfloat clearColor[4] = { 0, 0, 0, 0 };
 	voxelGrid->Clear(clearColor);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -196,7 +195,6 @@ void CornellScene::drawScene()
 		shader->uploadUniform("transform", i.second->getMVP());
 		shader->uploadUniform("model", i.second->getModelTransform());
 		shader->uploadUniform("view_pos", cam.getPosition());
-
 		shader->uploadUniform("light", light);
 		shader->uploadUniform("material", i.second->mat);
 
